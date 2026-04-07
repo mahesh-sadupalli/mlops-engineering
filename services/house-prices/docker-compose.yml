@@ -1,0 +1,23 @@
+services:
+  model-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  go-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.go
+    ports:
+      - "8080:8080"
+    command: ["-backend", "http://model-api:8000"]
+    depends_on:
+      model-api:
+        condition: service_healthy

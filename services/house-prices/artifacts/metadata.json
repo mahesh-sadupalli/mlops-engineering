@@ -1,0 +1,91 @@
+{
+  "feature_names": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude"
+  ],
+  "model_type": "gradient_boosting",
+  "model_params": {
+    "n_estimators": 200,
+    "max_depth": 5,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "min_samples_leaf": 10
+  },
+  "train_metrics": {
+    "rmse": 0.3820992891841839,
+    "mae": 0.26450146529216056,
+    "r2": 0.8907822812285207
+  },
+  "test_metrics": {
+    "rmse": 0.46572366062166903,
+    "mae": 0.31114479543914664,
+    "r2": 0.8344802793140098
+  },
+  "train_samples": 16512,
+  "test_samples": 4128,
+  "train_time_seconds": 6.63,
+  "feature_stats": {
+    "MedInc": {
+      "mean": 3.88075425750969,
+      "std": 1.9042362577470788,
+      "min": 0.4999,
+      "max": 15.0001,
+      "median": 3.5458
+    },
+    "HouseAge": {
+      "mean": 28.60828488372093,
+      "std": 12.6021177300953,
+      "min": 1.0,
+      "max": 52.0,
+      "median": 29.0
+    },
+    "AveRooms": {
+      "mean": 5.43523502048753,
+      "std": 2.387302579723395,
+      "min": 0.8888888888888888,
+      "max": 141.9090909090909,
+      "median": 5.235873651414888
+    },
+    "AveBedrms": {
+      "mean": 1.096684748789538,
+      "std": 0.4332014262644865,
+      "min": 0.3333333333333333,
+      "max": 25.636363636363637,
+      "median": 1.049285568483364
+    },
+    "Population": {
+      "mean": 1426.453003875969,
+      "std": 1137.0219480466567,
+      "min": 3.0,
+      "max": 35682.0,
+      "median": 1167.0
+    },
+    "AveOccup": {
+      "mean": 3.096961194668752,
+      "std": 11.578393509846865,
+      "min": 0.6923076923076923,
+      "max": 1243.3333333333333,
+      "median": 2.8172397135276888
+    },
+    "Latitude": {
+      "mean": 35.6431492248062,
+      "std": 2.136600595041562,
+      "min": 32.55,
+      "max": 41.95,
+      "median": 34.26
+    },
+    "Longitude": {
+      "mean": -119.58229045542636,
+      "std": 2.005592806566658,
+      "min": -124.35,
+      "max": -114.31,
+      "median": -118.51
+    }
+  }
+}
