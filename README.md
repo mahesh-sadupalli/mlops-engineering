@@ -55,67 +55,88 @@ This repository implements end-to-end MLOps workflows as production-ready servic
 
 ## Architecture
 
-```
-                        ┌──────────────────────────────────────────────────────┐
-                        │              Docker Compose Orchestration             │
-                        └──────────────────────────────────────────────────────┘
-                                                │
-                ┌───────────────────────────────┴───────────────────────────────┐
-                │                                                               │
-                ▼                                                               ▼
-┌───────────────────────────────┐                       ┌───────────────────────────────┐
-│     Go Proxy (Port 8080)      │                       │   FastAPI Model API (8000)     │
-│                               │  ── proxies to ──▶    │                               │
-│  - Request validation         │                       │  - Model loading at startup    │
-│  - Size limits (1MB/10MB)     │                       │  - Pydantic schema validation  │
-│  - Connection pooling         │                       │  - sklearn Pipeline inference   │
-│  - Structured JSON logging    │                       │  - Health checks               │
-│  - Metrics (latency, counts)  │                       │  - Single & batch predictions  │
-└───────────────────────────────┘                       └───────────────────────────────┘
-                                                                    │
-                                                                    ▼
-                                                        ┌───────────────────────┐
-                                                        │   Trained Artifacts    │
-                                                        │                       │
-                                                        │  - model.joblib       │
-                                                        │  - metadata.json      │
-                                                        └───────────────────────┘
-                                                                    ▲
-                                                                    │
-                                                        ┌───────────────────────┐
-                                                        │   Training Pipeline    │
-                                                        │                       │
-                                                        │  - Data loading       │
-                                                        │  - StandardScaler     │
-                                                        │  - GradientBoosting   │
-                                                        │  - MLflow tracking    │
-                                                        │  - Metric evaluation  │
-                                                        └───────────────────────┘
+```mermaid
+graph TB
+    subgraph Docker["🐳 Docker Compose Orchestration"]
+        direction TB
+        subgraph Proxy["Go Proxy · Port 8080"]
+            P1["Request Validation"]
+            P2["Size Limits · 1MB / 10MB"]
+            P3["Connection Pooling"]
+            P4["Structured JSON Logging"]
+            P5["Metrics · Latency & Counts"]
+        end
+
+        subgraph API["FastAPI Model API · Port 8000"]
+            A1["Model Loading at Startup"]
+            A2["Pydantic Schema Validation"]
+            A3["sklearn Pipeline Inference"]
+            A4["Health Checks"]
+            A5["Single & Batch Predictions"]
+        end
+
+        Proxy -- "proxies to" --> API
+    end
+
+    subgraph Artifacts["📦 Trained Artifacts"]
+        M1["model.joblib"]
+        M2["metadata.json"]
+    end
+
+    subgraph Training["🧪 Training Pipeline"]
+        T1["Data Loading"]
+        T2["StandardScaler"]
+        T3["GradientBoosting"]
+        T4["MLflow Tracking"]
+        T5["Metric Evaluation"]
+    end
+
+    API --> Artifacts
+    Training --> Artifacts
+
+    style Docker fill:#1a1a2e,stroke:#16213e,color:#e0e0e0
+    style Proxy fill:#0f3460,stroke:#533483,color:#e0e0e0
+    style API fill:#533483,stroke:#e94560,color:#e0e0e0
+    style Artifacts fill:#e94560,stroke:#e94560,color:#ffffff
+    style Training fill:#16213e,stroke:#0f3460,color:#e0e0e0
 ```
 
 ### Data Flow for Predictions
 
-```
-Client Request (JSON with 8 features)
-        │
-        ▼
-Go Proxy (/predict or /predict/batch)
-  ├─ Validates JSON format
-  ├─ Validates feature count (exactly 8)
-  ├─ Enforces request size limits
-  ├─ Records metrics (request count, errors, latency)
-  └─ Forwards to Python API
-        │
-        ▼
-FastAPI Model API
-  ├─ Pydantic schema validation
-  ├─ Converts features to numpy array
-  ├─ StandardScaler transforms features
-  ├─ GradientBoostingRegressor predicts
-  └─ Returns prediction (in $100k units)
-        │
-        ▼
-Client Response (JSON)
+```mermaid
+graph LR
+    Client["🖥️ Client Request\nJSON · 8 Features"] --> Proxy
+
+    subgraph Proxy["⚡ Go Proxy"]
+        direction TB
+        V1["Validate JSON Format"] --> V2["Validate Feature Count = 8"]
+        V2 --> V3["Enforce Size Limits"]
+        V3 --> V4["Record Metrics"]
+    end
+
+    Proxy --> FastAPI
+
+    subgraph FastAPI["🐍 FastAPI Model API"]
+        direction TB
+        F1["Pydantic Validation"] --> F2["Convert to NumPy Array"]
+        F2 --> F3["StandardScaler Transform"]
+        F3 --> F4["GradientBoosting Predict"]
+    end
+
+    FastAPI --> Response["📊 Prediction\n$100k Units"]
+
+    style Client fill:#2196F3,stroke:#1565C0,color:#ffffff
+    style Proxy fill:#FF9800,stroke:#E65100,color:#ffffff
+    style V1 fill:#FFB74D,stroke:#E65100,color:#000000
+    style V2 fill:#FFB74D,stroke:#E65100,color:#000000
+    style V3 fill:#FFB74D,stroke:#E65100,color:#000000
+    style V4 fill:#FFB74D,stroke:#E65100,color:#000000
+    style FastAPI fill:#4CAF50,stroke:#2E7D32,color:#ffffff
+    style F1 fill:#81C784,stroke:#2E7D32,color:#000000
+    style F2 fill:#81C784,stroke:#2E7D32,color:#000000
+    style F3 fill:#81C784,stroke:#2E7D32,color:#000000
+    style F4 fill:#81C784,stroke:#2E7D32,color:#000000
+    style Response fill:#9C27B0,stroke:#6A1B9A,color:#ffffff
 ```
 
 ---
