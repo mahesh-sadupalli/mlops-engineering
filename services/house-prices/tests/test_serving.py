@@ -1,4 +1,3 @@
-import json
 import tempfile
 from pathlib import Path
 
@@ -31,8 +30,10 @@ def trained_artifacts():
 def client(trained_artifacts, monkeypatch_module):
     """Create test client with trained model."""
     import serving.app as app_module
+
     monkeypatch_module.setattr(app_module, "ARTIFACTS_DIR", trained_artifacts)
     from serving.app import app
+
     with TestClient(app) as c:
         yield c
 
@@ -40,6 +41,7 @@ def client(trained_artifacts, monkeypatch_module):
 @pytest.fixture(scope="module")
 def monkeypatch_module():
     from _pytest.monkeypatch import MonkeyPatch
+
     mp = MonkeyPatch()
     yield mp
     mp.undo()
@@ -79,9 +81,9 @@ def test_predict_wrong_feature_count(client):
 
 
 def test_predict_batch(client):
-    resp = client.post("/predict/batch", json={
-        "instances": [SAMPLE_FEATURES, SAMPLE_FEATURES]
-    })
+    resp = client.post(
+        "/predict/batch", json={"instances": [SAMPLE_FEATURES, SAMPLE_FEATURES]}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["predictions"]) == 2

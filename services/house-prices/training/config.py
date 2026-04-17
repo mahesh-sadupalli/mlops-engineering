@@ -10,13 +10,15 @@ class TrainingConfig:
 
     # Model
     model_type: str = "gradient_boosting"
-    model_params: dict = field(default_factory=lambda: {
-        "n_estimators": 200,
-        "max_depth": 5,
-        "learning_rate": 0.1,
-        "subsample": 0.8,
-        "min_samples_leaf": 10,
-    })
+    model_params: dict = field(
+        default_factory=lambda: {
+            "n_estimators": 200,
+            "max_depth": 5,
+            "learning_rate": 0.1,
+            "subsample": 0.8,
+            "min_samples_leaf": 10,
+        }
+    )
 
     # Paths
     artifacts_dir: Path = Path("artifacts")

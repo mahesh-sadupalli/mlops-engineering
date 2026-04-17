@@ -21,10 +21,12 @@ except ImportError:
 
 def build_pipeline(config: TrainingConfig) -> Pipeline:
     """Build sklearn pipeline with preprocessing and model."""
-    return Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", GradientBoostingRegressor(**config.model_params)),
-    ])
+    return Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("model", GradientBoostingRegressor(**config.model_params)),
+        ]
+    )
 
 
 def evaluate(pipeline: Pipeline, X: np.ndarray, y: np.ndarray) -> dict:
@@ -42,7 +44,7 @@ def train(config: TrainingConfig | None = None) -> dict:
     config = config or TrainingConfig()
     config.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading dataset...")
+    print("Loading dataset...")
     X_train, X_test, y_train, y_test, feature_names = load_dataset(config)
     print(f"Train: {X_train.shape[0]} samples | Test: {X_test.shape[0]} samples")
 
@@ -66,7 +68,9 @@ def train(config: TrainingConfig | None = None) -> dict:
             for name, value in metrics.items():
                 mlflow.log_metric(f"{split}_{name}", value)
 
-        print(f"Train RMSE: {train_metrics['rmse']:.4f} | R²: {train_metrics['r2']:.4f}")
+        print(
+            f"Train RMSE: {train_metrics['rmse']:.4f} | R²: {train_metrics['r2']:.4f}"
+        )
         print(f"Test  RMSE: {test_metrics['rmse']:.4f} | R²: {test_metrics['r2']:.4f}")
 
         # Save model
