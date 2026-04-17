@@ -1,6 +1,8 @@
 import tempfile
 from pathlib import Path
 
+import mlflow
+
 from training.config import TrainingConfig
 from training.data import get_feature_stats, load_dataset
 from training.train import build_pipeline, evaluate, train
@@ -44,8 +46,9 @@ def test_evaluate():
 
 def test_train_e2e():
     with tempfile.TemporaryDirectory() as tmpdir:
+        mlflow.set_tracking_uri(f"file://{tmpdir}/mlruns")
         config = TrainingConfig(
-            artifacts_dir=Path(tmpdir),
+            artifacts_dir=Path(tmpdir) / "artifacts",
             model_params={
                 "n_estimators": 10,
                 "max_depth": 3,
@@ -55,6 +58,6 @@ def test_train_e2e():
             },
         )
         metadata = train(config)
-        assert (Path(tmpdir) / "model.joblib").exists()
-        assert (Path(tmpdir) / "metadata.json").exists()
+        assert (Path(tmpdir) / "artifacts" / "model.joblib").exists()
+        assert (Path(tmpdir) / "artifacts" / "metadata.json").exists()
         assert metadata["test_metrics"]["r2"] > 0.0

@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 
+import mlflow
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,8 +13,9 @@ from training.train import train
 def trained_artifacts():
     """Train a small model for serving tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
+        mlflow.set_tracking_uri(f"file://{tmpdir}/mlruns")
         config = TrainingConfig(
-            artifacts_dir=Path(tmpdir),
+            artifacts_dir=Path(tmpdir) / "artifacts",
             model_params={
                 "n_estimators": 10,
                 "max_depth": 3,
@@ -23,7 +25,7 @@ def trained_artifacts():
             },
         )
         train(config)
-        yield Path(tmpdir)
+        yield Path(tmpdir) / "artifacts"
 
 
 @pytest.fixture(scope="module")
