@@ -60,3 +60,23 @@ docker-compose.override.yml
 # MLflow
 mlruns/
 mlartifacts/
+
+# Documentation (LaTeX build artifacts and private docs)
+docs/_kaobook/
+docs/*.cls
+docs/*.sty
+docs/*.pdf
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.bbl
+docs/*.bcf
+docs/*.blg
+docs/*.fls
+docs/*.fdb_latexmk
+docs/*.run.xml
+docs/*.synctex.gz
+docs/*.mw
+docs/*.tex
+docs/case-studies.md
