@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: house-prices
+
+resources:
+  - namespace.yaml
+  - model-api.yaml
+  - go-proxy.yaml
+  - hpa.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
