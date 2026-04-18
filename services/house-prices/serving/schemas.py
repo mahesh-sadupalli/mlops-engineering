@@ -38,3 +38,26 @@ class BatchPredictionRequest(BaseModel):
 
 class BatchPredictionResponse(BaseModel):
     predictions: list[float]
+
+
+class DriftFeatureDetail(BaseModel):
+    mean_shift: float
+    std_ratio: float
+    range_breach: bool
+    status: str
+    training_mean: float
+    current_mean: float
+
+
+class DriftResponse(BaseModel):
+    overall_status: str
+    drifted_features: int
+    total_features: int
+    features: dict[str, DriftFeatureDetail]
+
+
+class MonitoringResponse(BaseModel):
+    total_predictions: int
+    buffer_samples: int
+    uptime_seconds: float
+    drift: DriftResponse | None = None

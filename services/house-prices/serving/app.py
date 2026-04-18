@@ -7,11 +7,16 @@ from pathlib import Path
 import numpy as np
 from fastapi import FastAPI, HTTPException
 
+from monitoring.collector import FeatureCollector
+from monitoring.drift import compute_drift
+
 from .schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
+    DriftResponse,
     HealthResponse,
     ModelInfoResponse,
+    MonitoringResponse,
     PredictionRequest,
     PredictionResponse,
 )
@@ -37,6 +42,11 @@ async def lifespan(app: FastAPI):
     _state["model"] = joblib.load(model_path)
     with open(metadata_path) as f:
         _state["metadata"] = json.load(f)
+
+    _state["collector"] = FeatureCollector(
+        feature_names=_state["metadata"]["feature_names"],
+        window_size=1000,
+    )
 
     print(f"Model loaded from {model_path}")
     yield
@@ -81,6 +91,7 @@ def predict(req: PredictionRequest):
 
     X = np.array(req.features).reshape(1, -1)
     prediction = float(_state["model"].predict(X)[0])
+    _state["collector"].record(req.features)
     return PredictionResponse(prediction=prediction)
 
 
@@ -98,4 +109,24 @@ def predict_batch(req: BatchPredictionRequest):
 
     X = np.array(req.instances)
     predictions = _state["model"].predict(X).tolist()
+    _state["collector"].record_batch(req.instances)
     return BatchPredictionResponse(predictions=predictions)
+
+
+@app.get("/monitoring/drift", response_model=MonitoringResponse)
+def monitoring_drift():
+    collector = _state["collector"]
+    meta = _state["metadata"]
+
+    current_stats = collector.get_current_stats()
+    drift = None
+    if current_stats and "feature_stats" in meta:
+        drift_result = compute_drift(meta["feature_stats"], current_stats)
+        drift = DriftResponse(**drift_result)
+
+    return MonitoringResponse(
+        total_predictions=collector.total_predictions,
+        buffer_samples=collector.sample_count,
+        uptime_seconds=round(collector.uptime_seconds, 1),
+        drift=drift,
+    )
