@@ -30,6 +30,9 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     prediction: float = Field(..., description="Predicted house price in $100k units")
+    variant: str = Field(
+        "control", description="Model variant that served this prediction"
+    )
 
 
 class BatchPredictionRequest(BaseModel):
@@ -38,6 +41,25 @@ class BatchPredictionRequest(BaseModel):
 
 class BatchPredictionResponse(BaseModel):
     predictions: list[float]
+    variant: str = Field(
+        "control", description="Model variant that served this prediction"
+    )
+
+
+class ABVariantInfo(BaseModel):
+    name: str
+    weight: float
+    model_type: str
+    test_r2: float | None = None
+    count: int = 0
+    avg_latency_ms: float = 0.0
+    avg_prediction: float = 0.0
+
+
+class ABExperimentResponse(BaseModel):
+    experiment_name: str
+    variants: list[ABVariantInfo]
+    total_predictions: int
 
 
 class DriftFeatureDetail(BaseModel):

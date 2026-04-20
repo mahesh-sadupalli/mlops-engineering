@@ -1,16 +1,20 @@
-"""FastAPI model serving for house price prediction."""
+"""FastAPI model serving for house price prediction with A/B testing."""
 
-import json
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 
 from monitoring.collector import FeatureCollector
 from monitoring.drift import compute_drift
 
+from .ab.experiment import load_experiment
+from .ab.router import ABRouter
 from .schemas import (
+    ABExperimentResponse,
     BatchPredictionRequest,
     BatchPredictionResponse,
     DriftResponse,
@@ -21,11 +25,6 @@ from .schemas import (
     PredictionResponse,
 )
 
-try:
-    import joblib
-except ImportError:
-    from sklearn.externals import joblib
-
 ARTIFACTS_DIR = Path(__file__).parent.parent / "artifacts"
 
 _state: dict = {}
@@ -33,29 +32,29 @@ _state: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    model_path = ARTIFACTS_DIR / "model.joblib"
-    metadata_path = ARTIFACTS_DIR / "metadata.json"
+    experiment = load_experiment(ARTIFACTS_DIR)
 
-    if not model_path.exists():
-        raise RuntimeError(f"Model not found at {model_path}. Run training first.")
+    # Use the first variant's metadata for shared config (feature names, etc.)
+    primary = experiment.variants[0]
 
-    _state["model"] = joblib.load(model_path)
-    with open(metadata_path) as f:
-        _state["metadata"] = json.load(f)
-
+    _state["experiment"] = experiment
+    _state["router"] = ABRouter(experiment)
+    _state["model"] = primary.model
+    _state["metadata"] = primary.metadata
     _state["collector"] = FeatureCollector(
-        feature_names=_state["metadata"]["feature_names"],
+        feature_names=primary.metadata["feature_names"],
         window_size=1000,
     )
 
-    print(f"Model loaded from {model_path}")
+    variant_names = ", ".join(f"{v.name} ({v.weight:.0%})" for v in experiment.variants)
+    print(f"Experiment '{experiment.name}' loaded: {variant_names}")
     yield
     _state.clear()
 
 
 app = FastAPI(
     title="House Price Prediction API",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -80,7 +79,10 @@ def model_info():
 
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict(req: PredictionRequest):
+def predict(
+    req: PredictionRequest,
+    x_variant: Optional[str] = Header(None, description="Force a specific variant"),
+):
     meta = _state["metadata"]
     expected = len(meta["feature_names"])
     if len(req.features) != expected:
@@ -89,14 +91,24 @@ def predict(req: PredictionRequest):
             detail=f"Expected {expected} features, got {len(req.features)}",
         )
 
+    router: ABRouter = _state["router"]
+    variant = router.select_variant(forced_variant=x_variant)
+
+    start = time.perf_counter()
     X = np.array(req.features).reshape(1, -1)
-    prediction = float(_state["model"].predict(X)[0])
+    prediction = float(variant.model.predict(X)[0])
+    latency_ms = (time.perf_counter() - start) * 1000
+
+    router.record_prediction(variant.name, latency_ms, prediction)
     _state["collector"].record(req.features)
-    return PredictionResponse(prediction=prediction)
+    return PredictionResponse(prediction=prediction, variant=variant.name)
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
-def predict_batch(req: BatchPredictionRequest):
+def predict_batch(
+    req: BatchPredictionRequest,
+    x_variant: Optional[str] = Header(None, description="Force a specific variant"),
+):
     meta = _state["metadata"]
     expected = len(meta["feature_names"])
 
@@ -107,10 +119,37 @@ def predict_batch(req: BatchPredictionRequest):
                 detail=f"Instance {i}: expected {expected} features, got {len(row)}",
             )
 
+    router: ABRouter = _state["router"]
+    variant = router.select_variant(forced_variant=x_variant)
+
+    start = time.perf_counter()
     X = np.array(req.instances)
-    predictions = _state["model"].predict(X).tolist()
+    predictions = variant.model.predict(X).tolist()
+    latency_ms = (time.perf_counter() - start) * 1000
+
+    avg_pred = sum(predictions) / len(predictions) if predictions else 0.0
+    router.record_prediction(variant.name, latency_ms, avg_pred)
     _state["collector"].record_batch(req.instances)
-    return BatchPredictionResponse(predictions=predictions)
+    return BatchPredictionResponse(predictions=predictions, variant=variant.name)
+
+
+@app.get("/ab/experiment", response_model=ABExperimentResponse)
+def ab_experiment():
+    """Get current A/B experiment status and per-variant metrics."""
+    router: ABRouter = _state["router"]
+    summary = router.get_summary()
+    return ABExperimentResponse(**summary)
+
+
+@app.put("/ab/weights")
+def ab_update_weights(weights: dict[str, float]):
+    """Update traffic split between variants. Weights must sum to 1.0."""
+    router: ABRouter = _state["router"]
+    try:
+        router.experiment.update_weights(weights)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"status": "updated", "weights": weights}
 
 
 @app.get("/monitoring/drift", response_model=MonitoringResponse)
