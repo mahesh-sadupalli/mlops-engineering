@@ -1,7 +1,6 @@
 """Drift detection by comparing live feature distributions to training baselines."""
 
 
-
 def compute_drift(
     training_stats: dict[str, dict[str, float]],
     current_stats: dict[str, dict[str, float]],
