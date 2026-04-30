@@ -25,56 +25,75 @@ The goal is simple: **show what it actually takes to ship an ML model**, not jus
 
 ---
 
-## How It All Fits Together
+## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph train ["Train"]
-        D[California Housing\nDataset] --> P[sklearn Pipeline\nScaler + GBR]
-        P --> A[Artifacts\nmodel.joblib\nmetadata.json]
+flowchart TB
+    subgraph ingress ["Internet"]
+        C([Client])
     end
 
-    subgraph serve ["Serve"]
-        A --> F[FastAPI\nPort 8000]
-        F --> AB[A/B Router]
-        AB --> M1[Model A]
-        AB --> M2[Model B]
+    subgraph k8s ["Kubernetes Cluster"]
+        direction TB
+
+        subgraph proxy ["Go Proxy · Port 8080"]
+            direction LR
+            VAL[Request\nValidation] --> POOL[Connection\nPooling]
+            POOL --> LOG[Structured\nLogging]
+        end
+
+        subgraph api ["FastAPI · Port 8000"]
+            direction TB
+            PYDANTIC[Pydantic\nValidation] --> ROUTER[A/B Router]
+            ROUTER --> MODEL_A[Model A\ncontrol]
+            ROUTER --> MODEL_B[Model B\nchallenger]
+            PYDANTIC --> DRIFT[Drift\nDetector]
+            PYDANTIC --> METRICS[Feature\nCollector]
+        end
     end
 
-    subgraph operate ["Operate"]
-        F --> DR[Drift\nDetector]
-        F --> MT[Metrics\nCollector]
+    subgraph train ["Training Pipeline"]
+        direction LR
+        DATA[California\nHousing] --> PIPELINE[sklearn\nPipeline]
+        PIPELINE --> ARTIFACTS[Artifacts]
+        PIPELINE --> MLFLOW[MLflow\nTracking]
     end
 
-    subgraph scale ["Scale"]
-        G[Go Proxy\nPort 8080] --> F
+    subgraph cicd ["CI / CD"]
+        direction LR
+        LINT[Lint] --> TEST[Tests]
+        TEST --> BUILD[Docker\nBuild]
     end
 
-    C([Client]) --> G
+    C --> proxy
+    proxy --> api
+    ARTIFACTS --> api
+    BUILD -.->|deploy| k8s
 
-    style train fill:#0d1b2a,stroke:#1b263b,color:#e0e1dd
-    style serve fill:#1b263b,stroke:#415a77,color:#e0e1dd
-    style operate fill:#2a1b2a,stroke:#77415a,color:#e0e1dd
-    style scale fill:#415a77,stroke:#778da9,color:#e0e1dd
-    style C fill:#778da9,stroke:#e0e1dd,color:#0d1b2a
-    style D fill:#1b263b,stroke:#415a77,color:#e0e1dd
-    style P fill:#1b263b,stroke:#415a77,color:#e0e1dd
-    style A fill:#1b263b,stroke:#e0e1dd,color:#e0e1dd
-    style F fill:#415a77,stroke:#778da9,color:#e0e1dd
-    style G fill:#778da9,stroke:#e0e1dd,color:#0d1b2a
-    style AB fill:#415a77,stroke:#778da9,color:#e0e1dd
-    style M1 fill:#415a77,stroke:#778da9,color:#e0e1dd
-    style M2 fill:#415a77,stroke:#778da9,color:#e0e1dd
-    style DR fill:#2a1b2a,stroke:#77415a,color:#e0e1dd
-    style MT fill:#2a1b2a,stroke:#77415a,color:#e0e1dd
+    style ingress fill:#e8f4f8,stroke:#b8d4e3,color:#2c3e50
+    style k8s fill:#f0f4f8,stroke:#a3b8cc,color:#2c3e50
+    style proxy fill:#3498db,stroke:#2980b9,color:#ffffff
+    style api fill:#2ecc71,stroke:#27ae60,color:#ffffff
+    style train fill:#9b59b6,stroke:#8e44ad,color:#ffffff
+    style cicd fill:#e67e22,stroke:#d35400,color:#ffffff
+    style C fill:#34495e,stroke:#2c3e50,color:#ffffff
+    style VAL fill:#2980b9,stroke:#2471a3,color:#ffffff
+    style POOL fill:#2980b9,stroke:#2471a3,color:#ffffff
+    style LOG fill:#2980b9,stroke:#2471a3,color:#ffffff
+    style PYDANTIC fill:#27ae60,stroke:#1e8449,color:#ffffff
+    style ROUTER fill:#27ae60,stroke:#1e8449,color:#ffffff
+    style MODEL_A fill:#1e8449,stroke:#196f3d,color:#ffffff
+    style MODEL_B fill:#1e8449,stroke:#196f3d,color:#ffffff
+    style DRIFT fill:#27ae60,stroke:#1e8449,color:#ffffff
+    style METRICS fill:#27ae60,stroke:#1e8449,color:#ffffff
+    style DATA fill:#8e44ad,stroke:#7d3c98,color:#ffffff
+    style PIPELINE fill:#8e44ad,stroke:#7d3c98,color:#ffffff
+    style ARTIFACTS fill:#8e44ad,stroke:#7d3c98,color:#ffffff
+    style MLFLOW fill:#8e44ad,stroke:#7d3c98,color:#ffffff
+    style LINT fill:#d35400,stroke:#ba4a00,color:#ffffff
+    style TEST fill:#d35400,stroke:#ba4a00,color:#ffffff
+    style BUILD fill:#d35400,stroke:#ba4a00,color:#ffffff
 ```
-
-Four stages, each with a clear job:
-
-- **Train** — Load data, build a pipeline, evaluate, save artifacts, log everything to MLflow.
-- **Serve** — FastAPI loads models, routes predictions through the A/B router, validates with Pydantic.
-- **Operate** — A drift detector compares live feature distributions against training baselines. A metrics collector tracks prediction volume and latency per variant.
-- **Scale** — A Go proxy adds connection pooling, request validation, size limits, and structured logging.
 
 ---
 
