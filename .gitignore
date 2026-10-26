@@ -80,3 +80,6 @@ docs/*.synctex.gz
 docs/*.mw
 docs/*.tex
 docs/case-studies.md
+
+# Vector store
+chroma/

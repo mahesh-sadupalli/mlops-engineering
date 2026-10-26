@@ -1,0 +1,6 @@
+anthropic>=2.0
+chromadb>=1.0
+fastapi>=0.100
+uvicorn[standard]>=0.23
+pydantic>=2.0
+httpx>=0.24
