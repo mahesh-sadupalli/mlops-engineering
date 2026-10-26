@@ -22,3 +22,10 @@ services:
     depends_on:
       model-api:
         condition: service_healthy
+
+  web:
+    build: web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - rag-agent
