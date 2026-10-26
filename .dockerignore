@@ -1,0 +1,12 @@
+# Root build context is used by services/rag-agent to ingest the repo's docs.
+.git
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/mlruns
+**/mlflow.db
+**/artifacts
+**/chroma
+docs
+CLAUDE.md

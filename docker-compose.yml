@@ -1,0 +1,24 @@
+# Full stack: house-prices model API + MLOps copilot agent.
+services:
+  model-api:
+    build: services/house-prices
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  rag-agent:
+    build:
+      context: .
+      dockerfile: services/rag-agent/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      HOUSE_PRICES_URL: http://model-api:8000
+    depends_on:
+      model-api:
+        condition: service_healthy
