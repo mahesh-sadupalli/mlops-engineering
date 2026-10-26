@@ -46,7 +46,7 @@ def test_evaluate():
 
 def test_train_e2e():
     with tempfile.TemporaryDirectory() as tmpdir:
-        mlflow.set_tracking_uri(f"file://{tmpdir}/mlruns")
+        mlflow.set_tracking_uri(f"sqlite:///{tmpdir}/mlflow.db")
         config = TrainingConfig(
             artifacts_dir=Path(tmpdir) / "artifacts",
             model_params={

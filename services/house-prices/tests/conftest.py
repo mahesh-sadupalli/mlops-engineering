@@ -16,7 +16,7 @@ def trained_artifacts():
     """Train a small model for tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         artifacts_dir = Path(tmpdir) / "artifacts"
-        mlflow.set_tracking_uri(f"file://{tmpdir}/mlruns")
+        mlflow.set_tracking_uri(f"sqlite:///{tmpdir}/mlflow.db")
 
         config = TrainingConfig(
             artifacts_dir=artifacts_dir,
