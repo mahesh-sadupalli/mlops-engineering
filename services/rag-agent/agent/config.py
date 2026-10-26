@@ -17,6 +17,11 @@ class Settings:
         ]
     )
     house_prices_url: str = os.getenv("HOUSE_PRICES_URL", "http://localhost:8000")
+    cors_origins: list[str] = field(
+        default_factory=lambda: os.getenv(
+            "CORS_ORIGINS", "http://localhost:3000"
+        ).split(",")
+    )
     chunk_size: int = 1200
     top_k: int = 5
     max_turns: int = 8
