@@ -8,6 +8,8 @@ resources:
   - model-api.yaml
   - go-proxy.yaml
   - hpa.yaml
+  - rag-agent.yaml
+  - web.yaml
 
 commonLabels:
   app.kubernetes.io/managed-by: kustomize

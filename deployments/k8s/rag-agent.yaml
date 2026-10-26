@@ -1,0 +1,74 @@
+# Requires: kubectl -n house-prices create secret generic anthropic --from-literal=api-key=...
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-agent
+  namespace: house-prices
+  labels:
+    app: rag-agent
+    app.kubernetes.io/part-of: mlops-engineering
+spec:
+  # Single replica: agent metrics are in-process, and the workload is
+  # bound by Claude API latency, not CPU, so CPU autoscaling doesn't apply.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-agent
+  template:
+    metadata:
+      labels:
+        app: rag-agent
+    spec:
+      containers:
+        - name: rag-agent
+          image: rag-agent:latest
+          ports:
+            - containerPort: 8001
+              protocol: TCP
+          env:
+            - name: HOUSE_PRICES_URL
+              value: http://model-api.house-prices.svc.cluster.local:8000
+            - name: CORS_ORIGINS
+              value: http://localhost:3000
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: anthropic
+                  key: api-key
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-agent
+  namespace: house-prices
+  labels:
+    app: rag-agent
+spec:
+  selector:
+    app: rag-agent
+  ports:
+    - port: 8001
+      targetPort: 8001
+      protocol: TCP
+  type: LoadBalancer

@@ -1,0 +1,55 @@
+# Build the image with --build-arg NEXT_PUBLIC_AGENT_URL=<rag-agent external URL>
+# and set CORS_ORIGINS on rag-agent to this service's external URL.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: house-prices
+  labels:
+    app: web
+    app.kubernetes.io/part-of: mlops-engineering
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: mlops-web:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: house-prices
+  labels:
+    app: web
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+  type: LoadBalancer
