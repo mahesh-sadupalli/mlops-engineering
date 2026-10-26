@@ -63,3 +63,17 @@ def test_metrics_aggregate_requests(api):
 )
 def test_rejects_invalid_history(api, messages):
     assert api.post("/chat", json={"messages": messages}).status_code == 422
+
+
+def test_unexpected_errors_end_stream_with_error_event(api, monkeypatch):
+    def boom(**kwargs):
+        raise TypeError("Could not resolve authentication method")
+
+    from agent.app import _state
+
+    monkeypatch.setattr(_state["client"].beta.messages, "stream", boom)
+    resp = api.post("/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    events = sse_events(resp)
+    assert events[-1]["type"] == "error"
+    assert "authentication" in events[-1]["message"]
+    assert api.get("/metrics").json()["total_errors"] == 1

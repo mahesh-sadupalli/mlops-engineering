@@ -1,6 +1,7 @@
 """FastAPI service exposing the MLOps copilot agent over Server-Sent Events."""
 
 import json
+import logging
 from collections import Counter
 from contextlib import asynccontextmanager
 
@@ -15,6 +16,8 @@ from .loop import run_agent
 from .schemas import ChatRequest, HealthResponse, MetricsResponse
 from .store import get_collection
 from .tools import Toolbox
+
+logger = logging.getLogger(__name__)
 
 _state: dict = {}
 
@@ -101,8 +104,11 @@ async def chat(req: ChatRequest):
             async for event in run_agent(_state["client"], _state["toolbox"], history):
                 _state["metrics"].record(event)
                 yield f"data: {json.dumps(event)}\n\n"
-        except anthropic.APIError as e:
-            event = {"type": "error", "message": f"Claude API error: {e.message}"}
+        except Exception as e:
+            # Stream boundary: always end with an event the UI can render
+            logger.exception("chat failed")
+            message = e.message if isinstance(e, anthropic.APIError) else str(e)
+            event = {"type": "error", "message": message}
             _state["metrics"].record(event)
             yield f"data: {json.dumps(event)}\n\n"
 
