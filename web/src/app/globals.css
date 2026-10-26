@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #e4e4e7;
 }
 
 @theme inline {
@@ -12,15 +12,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
 }
+
+/* Minimal styling for rendered agent markdown */
+.markdown > * + * { margin-top: 0.75rem; }
+.markdown ul { list-style: disc; padding-left: 1.25rem; }
+.markdown ol { list-style: decimal; padding-left: 1.25rem; }
+.markdown h1, .markdown h2, .markdown h3 { font-weight: 600; }
+.markdown a { color: #34d399; text-decoration: underline; }
+.markdown code { font-family: var(--font-mono); font-size: 0.85em; background: #27272a; padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
+.markdown pre { background: #18181b; border: 1px solid #27272a; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; }
+.markdown pre code { background: none; padding: 0; }
+.markdown table { border-collapse: collapse; font-size: 0.875rem; }
+.markdown th, .markdown td { border: 1px solid #3f3f46; padding: 0.25rem 0.5rem; }
